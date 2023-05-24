@@ -2,8 +2,11 @@ from typing import List, Tuple, Dict
 import csv
 import io
 
+import numpy
+import numpy as np
 import pytesseract
 import pandas as pd
+from cv2 import cv2
 from pdf2image import convert_from_path
 
 from pawls.preprocessors.model import Token, PageInfo, Page
@@ -16,14 +19,37 @@ def calculate_image_scale_factor(pdf_size, image_size):
     scale_w, scale_h = pdf_w / img_w, pdf_h / img_h
     return scale_w, scale_h
 
+def apply_threshold(img, argument):
+    switcher = {
+        1: cv2.threshold(cv2.GaussianBlur(img, (9, 9), 0), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1],
+        2: cv2.threshold(cv2.GaussianBlur(img, (7, 7), 0), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1],
+        3: cv2.threshold(cv2.GaussianBlur(img, (5, 5), 0), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1],
+        4: cv2.threshold(cv2.medianBlur(img, 5), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1],
+        5: cv2.threshold(cv2.medianBlur(img, 3), 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1],
+        6: cv2.adaptiveThreshold(cv2.GaussianBlur(img, (5, 5), 0), 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2),
+        7: cv2.adaptiveThreshold(cv2.medianBlur(img, 3), 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 31, 2),
+    }
+    return switcher.get(argument, "Invalid method")
 
 def extract_page_tokens(
     pdf_image: "PIL.Image", pdf_size=Tuple[float, float], language="eng"
 ) -> List[Dict]:
 
+    open_cv_image = numpy.array(pdf_image.convert('RGB'))
+    # Convert RGB to BGR
+    open_cv_image = open_cv_image[:, :, ::-1].copy()
+    img = cv2.resize(open_cv_image, None, fx=1.5, fy=1.5, interpolation=cv2.INTER_CUBIC)
+    # Convert to gray
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Apply dilation and erosion to remove some noise
+    kernel = np.ones((1, 1), np.uint8)
+    img = cv2.dilate(img, kernel, iterations=1)
+    img = cv2.erode(img, kernel, iterations=1)
+    img = apply_threshold(img, 1)
+
     _data = pytesseract.image_to_data(pdf_image, lang=language)
 
-    scale_w, scale_h = calculate_image_scale_factor(pdf_size, pdf_image.size)
+    scale_w, scale_h = calculate_image_scale_factor(pdf_size, img.size)
 
     res = pd.read_csv(
         io.StringIO(_data), quoting=csv.QUOTE_NONE, encoding="utf-8", sep="\t"
