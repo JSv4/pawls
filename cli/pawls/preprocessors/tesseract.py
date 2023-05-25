@@ -49,7 +49,7 @@ def extract_page_tokens(
 
     _data = pytesseract.image_to_data(pdf_image, lang=language)
 
-    scale_w, scale_h = calculate_image_scale_factor(pdf_size, img.size)
+    scale_w, scale_h = calculate_image_scale_factor(pdf_size, pdf_image.size)
 
     res = pd.read_csv(
         io.StringIO(_data), quoting=csv.QUOTE_NONE, encoding="utf-8", sep="\t"
