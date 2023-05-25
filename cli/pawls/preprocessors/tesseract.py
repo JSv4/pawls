@@ -6,7 +6,7 @@ import numpy
 import numpy as np
 import pytesseract
 import pandas as pd
-from cv2 import cv2
+import cv2
 from pdf2image import convert_from_path
 
 from pawls.preprocessors.model import Token, PageInfo, Page
