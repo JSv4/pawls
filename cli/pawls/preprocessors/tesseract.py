@@ -47,7 +47,7 @@ def extract_page_tokens(
     img = cv2.erode(img, kernel, iterations=1)
     img = apply_threshold(img, 1)
 
-    _data = pytesseract.image_to_data(pdf_image, lang=language)
+    _data = pytesseract.image_to_data(img, lang=language)
 
     scale_w, scale_h = calculate_image_scale_factor(pdf_size, pdf_image.size)
 
